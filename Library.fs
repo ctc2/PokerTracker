@@ -31,7 +31,7 @@ let writeFile (filename: string) (i: Info) =
             match g with
             | CashGame(n,sb,bb) -> "c " + n.ToString() + " " + sb.ToString() + " " + bb.ToString()
             | Tournament(n,sb,bb) -> "t " + n.ToString() + " " + sb.ToString() + " " + bb.ToString()
-            | Other -> ""
+            | Other -> "o 0 0 0"
         date.ToString() + " " + bi.ToString() + " " + co.ToString() + " " + net.ToString() + " " + gt + " " + dur.ToString() + " [" + notes + "]"
     File.AppendAllText(filename, (formatInfo i) + "\n")
 

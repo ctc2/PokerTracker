@@ -1,11 +1,11 @@
-﻿open System
+open System
 open Library
 
 [<EntryPoint>]
 let main argv =
 
     // file to store data
-    let f = "data.txt"
+    let f = "data/data.txt"
 
     if argv.Length = 1 && argv.[0] = "in" then
         // input data into textfile

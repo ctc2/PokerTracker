@@ -788,11 +788,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/calvinchung/poker/pokertracker/pokertracker.fsproj",
+      "projectUniqueName": "/Users/calvinchung/pokertracker/pokertracker.fsproj",
       "projectName": "pokertracker",
-      "projectPath": "/Users/calvinchung/poker/pokertracker/pokertracker.fsproj",
+      "projectPath": "/Users/calvinchung/pokertracker/pokertracker.fsproj",
       "packagesPath": "/Users/calvinchung/.nuget/packages/",
-      "outputPath": "/Users/calvinchung/poker/pokertracker/obj/",
+      "outputPath": "/Users/calvinchung/pokertracker/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "/usr/local/share/dotnet/sdk/NuGetFallbackFolder"

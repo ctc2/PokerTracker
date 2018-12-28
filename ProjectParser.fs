@@ -6,15 +6,21 @@ open Parser
 type GameType =
 | CashGame of int*int*int // Number of Players * SB * BB
 | Tournament of int*int*int
-| Other
+| Other // for deposits/withdrawals/previous trackings
 
 // Date * Buy-in * Cash-out * Net * Game-type * Duration in minutes * Notes
 type Info = int*int*int*int*GameType*int*string
 
 (* Parsers *)
 
-// parses a number from digits into an int
-let pnum = pmany0 pdigit |>> stringify |>> int //<!> "pnumber"
+// parses a positive number from digits into an int
+let ppos = pmany0 pdigit |>> stringify |>> int //<!> "ppos"
+
+// parses a negative number
+let pneg = pright (pchar '-') ppos |>> (fun a -> -a) //<!> "pneg"
+
+// parses a number
+let pnum = pneg <|> ppos //<!> "pnum"
 
 // parses a space for convenience
 let pspace = pchar ' ' //<!> "pspace"
