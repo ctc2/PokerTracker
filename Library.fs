@@ -1,93 +1,135 @@
+(*
+    All REPL related functions are kept in Library.fs. These
+    algorithms are responsible for accessing/analyzing the data
+    stored in the pokertracker.
+*)
+
 module Library
 
 open System
-open System.IO
 open ProjectParser
 
-// prettyprints date
+(* TODO LIST:
+    figure out how to round the inputs to only 2 decimal places
+    add more functions in repl
+        -most profitable number of players for cg
+        -entry/date with most winnings
+        -longest/biggest run of positive winnings
+*)
+
+(* Library of REPL commands *)
+
+let inet = "\nnet = net earnings"
+let igt = "\ngame = most profitable game type (Cash Game vs. Tournament)"
+let ibb = "\nbestb = most profitable blinds for Cash Game in $"
+let iquit = "\nquit = quits program"
+let iprint = "\nprint = prints all entries"
+let ibbib = "\nbestbinbb = most profitable blinds for Cash Game in Big Blinds"
+let bar = "--------------------------------------\n"
+
+// all instructions for input repl
+let instructions = bar + "Input options:" + iprint + inet + igt + ibb + ibbib + iquit 
+
+// finds net balance  
+let net (data: Info list) : float =
+    float (List.fold (fun a (_,_,_,b,_,_,_) -> a + b) 0.0 data)
+
+// helper function to find CashGames/Tournaments
+let find (x: bool) (_,_,_,_,c,_,_) = 
+        match c with 
+        | CashGame(_,_,_) -> x
+        | _ -> not x
+
+// gets all CashGame entries
+let getcash (data: Info list) : Info list =
+    List.filter (find true) data
+
+// gets all Tournament entries
+let gettourn (data: Info list) =
+    List.filter (find false) data
+
+// finds most profitable game type (cg vs. t)
+let gt (data: Info list) : string =
+    // find net balance of each
+    let netcgs = net (getcash data)
+    let netts = net (gettourn data)
+    let dif = netcgs - netts
+    let s =
+        if dif < 0.0 then
+            "Tournaments are more profitable by: $" + (abs dif).ToString()
+        elif dif > 0.0 then
+            "Cash Games are more profitable by: $" + dif.ToString()
+        else 
+            "Both are equally profitable"
+    s + "\nCash Games net = $" + netcgs.ToString() + ", Tournaments net = $" + netts.ToString()
+
+// get a map of all the blinds and the net balance for each one
+let rec netblinds (data: Info list) (blinds: Map<float*float,float>) : Map<float*float,float> =
+    match data with
+    | (_,_,_,net,CashGame(_,sb,bb),_,_) :: xs -> 
+        match blinds.TryFind (sb,bb) with
+        | Some t -> 
+            netblinds xs (Map.add (sb,bb) (t + net) blinds)
+        | None ->
+            netblinds xs (Map.add (sb,bb) net blinds)
+    | _ -> blinds
+
+// finds best net balance from list
+let rec findbest (blinds: ((float*float)*float) list) : (float*float)*float =
+    match blinds with
+    | x :: xs -> 
+        let rest = findbest xs
+        if (snd x) > (snd rest) then x else rest
+    | [] -> (0.0,0.0),(float Int64.MinValue) 
+
+// finds best blinds to play at in BBs
+let bestblinds (data: Info list) : (float*float)*float =
+    findbest (List.map (fun ((a,b),c) -> ((a,b),(c/b))) (Map.toList (netblinds (getcash data) Map.empty)))
+
+// finds best blinds to play at in $
+let bestblindsind (data: Info list) : (float*float)*float =
+    findbest (Map.toList (netblinds (getcash data) Map.empty))
+
+// prettyprints date from ddmmyy to mm/dd/yy
 let ppdate d = 
         let year = d % 100
         let month = ((d % 10000) - year)/100
         let day = (d - year - month)/10000
         month.ToString() + "/" + day.ToString() + "/" + year.ToString()
 
-// reads and parses a single line into an Info
-let readLine (s: string) : Info =
-    match (parse s) with
-    | Some e -> e
-    | None -> failwith "Info list not parsed!"
-
-// reads all lines in the files and outputs Info list
-let readFile (filename: string) : Info list =
-    let lines = File.ReadLines(filename)
-    Seq.toList (Seq.map readLine lines) 
-
-// writes to file given filename and Info
-let writeFile (filename: string) (i: Info) =
-    // formats Info to string to write into file
-    let formatInfo (i: Info) : string =
-        let date,bi,co,net,g,dur,notes = i
-        let gt =
-            match g with
-            | CashGame(n,sb,bb) -> "c " + n.ToString() + " " + sb.ToString() + " " + bb.ToString()
-            | Tournament(n,sb,bb) -> "t " + n.ToString() + " " + sb.ToString() + " " + bb.ToString()
-            | Other -> "o 0 0 0"
-        date.ToString() + " " + bi.ToString() + " " + co.ToString() + " " + net.ToString() + " " + gt + " " + dur.ToString() + " [" + notes + "]"
-    File.AppendAllText(filename, (formatInfo i) + "\n")
-
-(* Library of REPL commands *)
-
-let inet = "\nnet = displays net earnings"
-let iquit = "\nquit = quits program"
-let iprint = "\nprint = prints all entries"
-let bar = "--------------------------------------\n"
-
-// all instructions for input repl
-let instructions = bar + "Input options:" + iprint + inet + iquit 
-
-// finds net balance  
-let net (data: Info list) =
-    //type Info = int*int*int*int*GameType*int*string
-    float (List.fold (fun a (_,_,_,b,_,_,_) -> a + b) 0 data) / 100.0
-
-// need to update net function
+// reads input and then calls function
 let rec readInputs (x: int) (data: Info list) =
     if x <> 0 then
         printf "%s\n>" instructions
         let s = Console.ReadLine()
         match s with
+        | "bestb" ->
+            let b = bestblindsind data
+            printfn "%sMost profitable blinds: $%A,$%A with net balance: $%f" 
+                bar (fst (fst b)) (snd (fst b)) (snd b)
+            readInputs 1 data
+        | "bestbinbb" ->
+            let b = bestblinds data
+            printfn "%sMost profitable blinds: $%A,$%A with net balance: %f Big Blinds" 
+                bar (fst (fst b)) (snd (fst b)) (snd b)
+            readInputs 1 data
+        | "game" ->
+            printfn "%s%s" bar (gt data)
+            readInputs 1 data
         | "net" -> 
             printfn "%sNet balance: $%A" bar (net data)
             readInputs 1 data
         | "print" ->
             let f = (fun (a,b,c,d,e,f,g) -> ((ppdate a),b,c,d,e,f,g))
-            printfn "%sAll entries:\n%A" bar (List.map f data)
+            let s1 = "(Date, Buy-in, Cash-out, Net, GameType, Duration, [Notes])\nGameType format:\n"
+            let s2 = "CashGame(No. players, SB, BB)\nTournament(No. players, Place finished)\n"
+            printfn "%sAll entries: %s\n%A" bar (s1 + s2) (List.map f data)
             readInputs 1 data
         | "quit" -> 
             printf "%sQuitting program\n%s" bar bar
             readInputs 0 data
         | _ -> 
-            printfn "%sNot an analysis command" bar
+            printfn "%sNot a valid command" bar
             readInputs 1 data
     else exit 1
 
-// asks for data piece meal and returns Info type
-let inputData () : Info =
-    let inputData' (s: string) =
-        printfn "Input %s: " s
-        Console.ReadLine()
-    let d = int (inputData' "date")
-    let bi = int (inputData' "buy-in amount in cents")
-    let co = int (inputData' "cash-out amount in cents")
-    let g = List.head (Seq.toList (inputData' "c for Cash Game, t for Tournament"))
-    let n = int (inputData' "number of players")
-    let sb = int (inputData' "small blind in cents")
-    let bb = int (inputData' "big blind in cents")
-    let gt =
-        match g with
-        | 'c' -> CashGame(n,sb,bb)
-        | 't' -> Tournament(n,sb,bb)
-        | _ -> Other
-    let dur = int (inputData' "duration (in mins)")
-    let notes = inputData' "notes"
-    d,bi,co,(co - bi),gt,dur,notes
