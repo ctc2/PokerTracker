@@ -35,18 +35,25 @@ let net (data: Info list) : float =
     float (List.fold (fun a (_,_,_,b,_,_,_) -> a + b) 0.0 data)
 
 // helper function to find CashGames/Tournaments
-let find (x: bool) (_,_,_,_,c,_,_) = 
-        match c with 
-        | CashGame(_,_,_) -> x
-        | _ -> not x
+let find (x: char) (_,_,_,_,c,_,_) = 
+    match x with 
+    | 'c' -> // c for Cash Game
+        match c with
+        | CashGame(_,_,_) -> true
+        | _ -> false
+    | 't' -> // t for Tournament
+        match c with
+        | Tournament(_,_) -> true
+        | _ -> false
+    | _ -> false // Other
 
 // gets all CashGame entries
 let getcash (data: Info list) : Info list =
-    List.filter (find true) data
+    List.filter (find 'c') data
 
 // gets all Tournament entries
 let gettourn (data: Info list) =
-    List.filter (find false) data
+    List.filter (find 't') data
 
 // finds most profitable game type (cg vs. t)
 let gt (data: Info list) : string =
